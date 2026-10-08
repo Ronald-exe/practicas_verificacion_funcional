@@ -88,13 +88,13 @@ package seq_lab_pkg;
         req = bus_item::type_id::create("req");
         req.tag = $sformatf("%s%0d", prefix, i);
         `uvm_info("SEQ", {req.tag, ": llamo a start_item"}, UVM_LOW)
+          if (!req.randomize() with { kind == WRITE; }) begin
+          `uvm_error("SEQ", {req.tag, ": fallo aleatorizacion"})
+        end
         // TODO 3: pide turno
         start_item(req);
         `uvm_info("SEQ", {req.tag, ": start_item devuelve; aleatorizo"}, UVM_LOW)
         // TODO 4: aleatoriza como escritura
-        if (!req.randomize() with { kind == WRITE; }) begin
-          `uvm_error("SEQ", {req.tag, ": fallo aleatorizacion"})
-        end
         `uvm_info("SEQ", {req.tag, ": llamo a finish_item"}, UVM_LOW)
         // TODO 5: entrega el item
         finish_item(req);
