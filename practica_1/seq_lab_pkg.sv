@@ -47,7 +47,7 @@ package seq_lab_pkg;
         drive(req);
         `uvm_info("DRV", {"termino ", req.convert2string()}, UVM_LOW)
         // TODO 2: indica que has terminado con el item
-        seq_item_port.item_done();
+        //seq_item_port.item_done();
       end
     endtask
   endclass
