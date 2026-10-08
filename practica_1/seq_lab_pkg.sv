@@ -43,11 +43,12 @@ package seq_lab_pkg;
       forever begin
         // TODO 1: pide el siguiente item en req
         seq_item_port.get_next_item(req);
+        seq_item_port.get_next_item(req);
         `uvm_info("DRV", {"recibo  ", req.convert2string()}, UVM_LOW)
         drive(req);
         `uvm_info("DRV", {"termino ", req.convert2string()}, UVM_LOW)
         // TODO 2: indica que has terminado con el item
-        //seq_item_port.item_done();
+        seq_item_port.item_done();
       end
     endtask
   endclass
