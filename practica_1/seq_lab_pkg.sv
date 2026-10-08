@@ -185,7 +185,8 @@ package seq_lab_pkg;
 
   class rsp_seq extends uvm_sequence #(bus_item);
     `uvm_object_utils(rsp_seq)
-    int unsigned n_writes = 1;
+    int unsigned n_writes           = 1;
+    bit          recoger_escrituras = 1;   // Experimento E: 0 = no recoger las respuestas de las escrituras
     function new(string name = "rsp_seq"); super.new(name); endfunction
     task body();
       bit [7:0] data_antes;
@@ -196,8 +197,10 @@ package seq_lab_pkg;
         req.tag = $sformatf("W%0d", i);
         finish_item(req);
         // TODO 8: recoge la respuesta de esta escritura
-        get_response(rsp);
-        `uvm_info("SEQ", {"recibo respuesta ", rsp.convert2string()}, UVM_LOW)
+        if (recoger_escrituras) begin
+          get_response(rsp);
+          `uvm_info("SEQ", {"recibo respuesta ", rsp.convert2string()}, UVM_LOW)
+        end
       end
       req = bus_item::type_id::create("req");
       start_item(req);
@@ -207,6 +210,7 @@ package seq_lab_pkg;
       finish_item(req);
       // TODO 9: recoge la respuesta de la lectura e imprime el dato
       get_response(rsp);
+      `uvm_info("SEQ", {"respuesta de la lectura: ", rsp.convert2string()}, UVM_LOW)
       if (rsp.data != 8'h10)
         `uvm_error("CHK", $sformatf("R0: esperaba 0x10, lei 0x%02h", rsp.data))
       else
@@ -228,6 +232,20 @@ package seq_lab_pkg;
     endfunction
     task run_phase(uvm_phase phase);
       rsp_seq seq = rsp_seq::type_id::create("seq");
+      phase.raise_objection(this);
+      seq.start(env.agt.sqr);
+      phase.drop_objection(this);
+    endtask
+  endclass
+
+  // Experimento E: 12 escrituras sin recoger sus respuestas
+  class rsp_e_test extends rsp_test;
+    `uvm_component_utils(rsp_e_test)
+    function new(string name, uvm_component parent); super.new(name, parent); endfunction
+    task run_phase(uvm_phase phase);
+      rsp_seq seq = rsp_seq::type_id::create("seq");
+      seq.n_writes           = 12;
+      seq.recoger_escrituras = 0;
       phase.raise_objection(this);
       seq.start(env.agt.sqr);
       phase.drop_objection(this);
