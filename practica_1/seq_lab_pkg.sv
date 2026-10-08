@@ -251,4 +251,57 @@ package seq_lab_pkg;
       phase.drop_objection(this);
     endtask
   endclass
+
+  // Experimento F: respuestas con manejador, sin cola
+  class rsp_handler_seq extends rsp_seq;
+    `uvm_object_utils(rsp_handler_seq)
+    int unsigned n_rsp = 0;   // cuántas respuestas han llegado
+    function new(string name = "rsp_handler_seq");
+      super.new(name);
+      use_response_handler(1);   // UVM llamará a response_handler con cada respuesta
+    endfunction
+
+    // UVM la llama automáticamente por cada respuesta: no hay cola que se llene
+    virtual function void response_handler(uvm_sequence_item response);
+      bus_item r;
+      $cast(r, response);
+      n_rsp++;
+      `uvm_info("HDL", $sformatf("respuesta #%0d: %s", n_rsp, r.convert2string()), UVM_LOW)
+      if (r.tag == "R0") begin
+        if (r.data != 8'h10)
+          `uvm_error("CHK", $sformatf("R0: esperaba 0x10, lei 0x%02h", r.data))
+        else
+          `uvm_info("CHK", "R0: lei 0x10, correcto (y la respuesta si es de R0)", UVM_LOW)
+      end
+    endfunction
+
+    task body();
+      for (int i = 0; i < n_writes; i++) begin
+        req = bus_item::type_id::create("req");
+        start_item(req);
+        if (!req.randomize() with { kind == WRITE; addr == i; data == 8'h10 + i; }) `uvm_error("RAND", "")
+        req.tag = $sformatf("W%0d", i);
+        finish_item(req);
+        // Sin TODO 8: la respuesta la procesa response_handler
+      end
+      req = bus_item::type_id::create("req");
+      start_item(req);
+      if (!req.randomize() with { kind == READ; addr == 0; }) `uvm_error("RAND", "")
+      req.tag = "R0";
+      finish_item(req);
+      // Sin TODO 9: la respuesta de R0 también llega a response_handler
+    endtask
+  endclass
+
+  class rsp_f_test extends rsp_test;
+    `uvm_component_utils(rsp_f_test)
+    function new(string name, uvm_component parent); super.new(name, parent); endfunction
+    task run_phase(uvm_phase phase);
+      rsp_handler_seq seq = rsp_handler_seq::type_id::create("seq");
+      seq.n_writes = 12;
+      phase.raise_objection(this);
+      seq.start(env.agt.sqr);
+      phase.drop_objection(this);
+    endtask
+  endclass
 endpackage
