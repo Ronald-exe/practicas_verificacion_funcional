@@ -88,13 +88,13 @@ package seq_lab_pkg;
         req = bus_item::type_id::create("req");
         req.tag = $sformatf("%s%0d", prefix, i);
         `uvm_info("SEQ", {req.tag, ": llamo a start_item"}, UVM_LOW)
-          if (!req.randomize() with { kind == WRITE; }) begin
-          `uvm_error("SEQ", {req.tag, ": fallo aleatorizacion"})
-        end
         // TODO 3: pide turno
         start_item(req);
         `uvm_info("SEQ", {req.tag, ": start_item devuelve; aleatorizo"}, UVM_LOW)
         // TODO 4: aleatoriza como escritura
+        if (!req.randomize() with { kind == WRITE; }) begin
+          `uvm_error("SEQ", {req.tag, ": fallo aleatorizacion"})
+        end
         `uvm_info("SEQ", {req.tag, ": llamo a finish_item"}, UVM_LOW)
         // TODO 5: entrega el item
         finish_item(req);
@@ -120,4 +120,42 @@ package seq_lab_pkg;
   endclass
 
   // Aquí irán las clases de las prácticas
+
+  // ---------------- Práctica 2A: dato en el propio item ----------------
+  class wr_rd_seq extends uvm_sequence #(bus_item);
+    `uvm_object_utils(wr_rd_seq)
+    function new(string name = "wr_rd_seq"); super.new(name); endfunction
+
+    task body();
+      bus_item wr, rd;
+      wr = bus_item::type_id::create("wr");
+      start_item(wr);
+      if (!wr.randomize() with { kind == WRITE; addr == 3; data == 8'hA5; }) `uvm_error("RAND", "")
+      wr.tag = "WR";
+      finish_item(wr);
+
+      rd = bus_item::type_id::create("rd");
+      start_item(rd);
+      if (!rd.randomize() with { kind == READ; addr == 3; }) `uvm_error("RAND", "")
+      rd.tag = "RD";
+      finish_item(rd);
+
+      // TODO 6: comprueba que rd.data vale 0xA5; uvm_error si no
+      if (rd.data != 8'hA5)
+        `uvm_error("CHK", $sformatf("esperaba 0xA5, lei 0x%02h", rd.data))
+      else
+        `uvm_info("CHK", $sformatf("lei 0x%02h, correcto", rd.data), UVM_LOW)
+    endtask
+  endclass
+
+  class wr_rd_test extends base_test;
+    `uvm_component_utils(wr_rd_test)
+    function new(string name, uvm_component parent); super.new(name, parent); endfunction
+    task run_phase(uvm_phase phase);
+      wr_rd_seq seq = wr_rd_seq::type_id::create("seq");
+      phase.raise_objection(this);
+      seq.start(env.agt.sqr);
+      phase.drop_objection(this);
+    endtask
+  endclass
 endpackage
