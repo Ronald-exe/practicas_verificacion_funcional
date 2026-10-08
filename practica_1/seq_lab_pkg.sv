@@ -158,4 +158,79 @@ package seq_lab_pkg;
       phase.drop_objection(this);
     endtask
   endclass
+
+  // ---------------- Práctica 2B: respuesta separada ----------------
+  class rsp_driver extends bus_driver;
+    `uvm_component_utils(rsp_driver)
+    function new(string name, uvm_component parent); super.new(name, parent); endfunction
+    task run_phase(uvm_phase phase);
+      forever begin
+        bus_item item_copy;
+        seq_item_port.get_next_item(req);
+        // Conduce una copia: la secuencia no ve cambios en su item original
+        $cast(item_copy, req.clone());
+        drive(item_copy);
+        rsp = bus_item::type_id::create("rsp");
+        rsp.tag  = req.tag;
+        rsp.kind = req.kind;
+        rsp.addr = req.addr;
+        rsp.data = item_copy.data;
+        `uvm_info("DRV", {"respondo ", rsp.convert2string()}, UVM_LOW)
+        // TODO 7: asocia rsp a req y entrégala junto con item_done
+        rsp.set_id_info(req);
+        seq_item_port.item_done(rsp);
+      end
+    endtask
+  endclass
+
+  class rsp_seq extends uvm_sequence #(bus_item);
+    `uvm_object_utils(rsp_seq)
+    int unsigned n_writes = 1;
+    function new(string name = "rsp_seq"); super.new(name); endfunction
+    task body();
+      bit [7:0] data_antes;
+      for (int i = 0; i < n_writes; i++) begin
+        req = bus_item::type_id::create("req");
+        start_item(req);
+        if (!req.randomize() with { kind == WRITE; addr == i; data == 8'h10 + i; }) `uvm_error("RAND", "")
+        req.tag = $sformatf("W%0d", i);
+        finish_item(req);
+        // TODO 8: recoge la respuesta de esta escritura
+        get_response(rsp);
+        `uvm_info("SEQ", {"recibo respuesta ", rsp.convert2string()}, UVM_LOW)
+      end
+      req = bus_item::type_id::create("req");
+      start_item(req);
+      if (!req.randomize() with { kind == READ; addr == 0; }) `uvm_error("RAND", "")
+      req.tag = "R0";
+      data_antes = req.data;
+      finish_item(req);
+      // TODO 9: recoge la respuesta de la lectura e imprime el dato
+      get_response(rsp);
+      if (rsp.data != 8'h10)
+        `uvm_error("CHK", $sformatf("R0: esperaba 0x10, lei 0x%02h", rsp.data))
+      else
+        `uvm_info("CHK", $sformatf("R0: lei 0x%02h, correcto", rsp.data), UVM_LOW)
+      if (req.data != data_antes)
+        `uvm_error("CHK", "req.data cambio: el driver toco el item original")
+      else
+        `uvm_info("CHK", $sformatf("req.data no cambio (sigue en 0x%02h)", req.data), UVM_LOW)
+    endtask
+  endclass
+
+  class rsp_test extends base_test;
+    `uvm_component_utils(rsp_test)
+    function new(string name, uvm_component parent); super.new(name, parent); endfunction
+    function void build_phase(uvm_phase phase);
+      // Antes de crear el env: la fábrica creará rsp_driver donde se pida bus_driver
+      set_type_override_by_type(bus_driver::get_type(), rsp_driver::get_type());
+      super.build_phase(phase);
+    endfunction
+    task run_phase(uvm_phase phase);
+      rsp_seq seq = rsp_seq::type_id::create("seq");
+      phase.raise_objection(this);
+      seq.start(env.agt.sqr);
+      phase.drop_objection(this);
+    endtask
+  endclass
 endpackage
