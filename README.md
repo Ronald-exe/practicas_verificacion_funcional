@@ -1,0 +1,2 @@
+# practicas_verificacion_funcional
+practicas de verifiacion funcional
